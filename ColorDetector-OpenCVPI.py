@@ -4,12 +4,13 @@ import cv2
 import numpy as np
 from skimage.color import rgb2lab, deltaE_cie76
 
-
+VIDEO_PORT = 2
 
 
 frameWidth = 640
 frameHeight = 480
 
+comparison_flag = False
 
 
 # Define the codec and create VideoWriter object
@@ -19,7 +20,7 @@ out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
 
 # out = cv2.VideoWriter('output.mp4',0x00000021, 15.0, (1280,480))
 # out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frameWidth,frameHeight))
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(VIDEO_PORT)
 cap.set(3, frameWidth)
 cap.set(4, frameHeight)
 
@@ -92,17 +93,80 @@ COLORS = {
         'YELLOW': [180,200,100]
     }
 
-def comparison(colorsRGB, Colors: dict):
-    selected_color = rgb2lab(np.uint8(np.asarray([[colorsRGB]])))
+COLORS_RANGE = {
+    'GREEN': {
+        'LOWER_BOUNDARY': [0,51,0],
+        'UPPER_BOUNDARY': [100,255,100],
+        'NAME' : "GREEN"
+    },
+
+    'BLUE': {
+        'LOWER_BOUNDARY': [0, 153, 180],
+        'UPPER_BOUNDARY': [30, 255, 255],
+        'NAME': "BLUE"
+
+    },
+
+    'YELLOW': {
+        'LOWER_BOUNDARY': [100, 100, 0],
+        'UPPER_BOUNDARY': [180, 180, 100],
+        'NAME': "YELLOW"
+
+    }
+
+}
+
+def inRange(color:dict, upper_boundary:dict, lower_boundary:dict):
+    if int(color[0]) < int(lower_boundary[0]):
+        return False
+    if int(color[1]) < int(lower_boundary[1]):
+        return False
+    if int(color[2]) < int(lower_boundary[2]):
+        return False
+
+    if int(color[0]) > int(upper_boundary[0]):
+        return False
+    if int(color[1]) > int(upper_boundary[1]):
+        return False
+    if int(color[2]) > int(upper_boundary[2]):
+        return False
+    return True
+
+
+def comparison(colorsRGB, Colors: dict, ColorsRange:dict = COLORS_RANGE):
+    selected_color = colorsRGB
     min = sys.maxsize
     color_picked = []
-    for color in Colors:
-        curr_color = rgb2lab(np.uint8(np.asarray([[Colors[color]]])))
-        diff = deltaE_cie76(selected_color, curr_color)
-        if diff < min:
-            min = diff
-            color_picked = color
-    return color_picked
+
+    color = ColorsRange
+
+
+
+
+    if inRange(selected_color, color['GREEN']['UPPER_BOUNDARY'], color['GREEN']['LOWER_BOUNDARY']):
+        comparison_flag = True
+        return color['GREEN']['NAME']
+
+    if inRange(selected_color, color['BLUE']['UPPER_BOUNDARY'], color['BLUE']['LOWER_BOUNDARY']):
+        comparison_flag = True
+        return color['BLUE']['NAME']
+
+    if inRange(selected_color, color['YELLOW']['UPPER_BOUNDARY'], color['YELLOW']['LOWER_BOUNDARY']):
+        comparison_flag = True
+        return color['YELLOW']['NAME']
+
+
+    # selected_color = rgb2lab(np.uint8(np.asarray([[colorsRGB]])))
+    #
+    # for color in Colors:
+    #     curr_color = rgb2lab(np.uint8(np.asarray([[Colors[color]]])))
+    #     diff = deltaE_cie76(selected_color, curr_color)
+    #     if diff < min:
+    #         min = diff
+    #         color_picked = color
+
+    comparison_flag =  False
+    return "UNKNOWN"
 
 def stackImages(scale,imgArray):
     rows = len(imgArray)
@@ -197,6 +261,12 @@ def getContours(img, imgContour, flagExtractRectangle=False, choosen_cnt=choosen
         color_extracted = getRGBvalues(extractedRec)
         prediction = comparison(color_extracted, COLORS)
         cv2.putText(imgContour, "Color:" + str(prediction), (0, 300 ), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0),2)
+
+        cv2.putText(imgContour, "Mode Compare:" + str(comparison_flag), (0, 400 ), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0),2)
+
+        cv2.putText(imgContour, "RGB VALUE:" + str(color_extracted), (0,200 ), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0),2)
+
+
 
 
 
